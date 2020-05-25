@@ -298,6 +298,16 @@ A: Command line execution when deploying from an SCCM package is sadly still run
 
 The end result is that the script always runs in 64bit Powershell, and SCCM is none the wiser.
 
+Q : Why are you using HTTP? For that matter, why is MCC seemingly using HTTP?
+
+A : Because encryption is not needed and would cause issues. The function of encryption is to provide data confidentiality and data integrity.
+
+Data confidentiality is not an issue here, we're dealing with public data.
+
+Data integrity is assured in a different way. In the case of DCU it's the hash of the file that is checked versus the hash in the catalog XML file, and you yourself provide said catalog XML file,i thus ensuring integrity. In the case of MCC it's handled by the signature of the files you download.
+
+Lastly, if we would have to use HTTPS we would run into the well known SSL interception issues, including providing trusted certificates.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
