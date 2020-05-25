@@ -47,7 +47,7 @@ Since there is nothing proprietary about this, it is just using existing IIS fun
 ## Setup
 
 ### 1) Microsoft Connected Cache configuration extension
-This section describes how to manually configure IIS and LEDBAT for this extension. All of this should be scriptable.
+This section describes how to manually configure IIS and LEDBAT for this extension. All of this should be scriptable, but I have chosen here to walk through the manual steps.
 
 To start, log into the MCC enabled distribution point with an account that has Administrator privileges on said server.
 
@@ -114,7 +114,7 @@ The net result is now that the URL
 #### 1.2) LEDBAT configuration
 LEDBAT is a throttling technology available from Windows Server 2016 and up. It can be configured by checking a checkbox in the properties of the SCCM distribution point in the SCCM console.
 
-The rules SCCM configures are aimed at connections coming in on port 80 and 443, which are the ports the DP will serve content on. This is good as it will be re-used in this configuration here, since port 80 is in use.
+The rules SCCM configures are aimed at connections coming in on port 80 and 443, which are the ports the DP will serve content on. This is good as it will be re-used in this configuration here, since we will be using port 80.
 
 However this only covers the connection between the DP and the client, there is still the issue that the DP will download the content from the CDN and thus might still saturate the WAN link itself. Therefore we also want to configure LEDBAT between the server and the CDN.
 
@@ -200,11 +200,24 @@ There are many ways you can deploy it, but the easiest is just creating an SCCM 
 
 ![](images/SCCMPackage_3.PNG)
 
-### Verifying functionality
+I would advise deploying the script on a repeating schedule, for example daily. This is to cover the scenario where clients roam between boundaries and the MCC server that is appropriate for them changes. In this scenario, the XML file needs to be modified to reflect this, and this is easiest done by just re-running the script.
+
+## Verifying functionality
 
 To verify that the solution is working, check the Dell Command Update logs at
 
 C:\ProgramData\Dell
+
+## Q&A
+
+Q : Is this supported by Dell?
+
+A : This exact solution : no, but I am using officially supported functionality of DCU here in redirecting the downloads to a different location, so the end result is "kind of". It will work as long as DCU supports downloads from HTTP.
+
+
+Q : Is this supported by Microsoft?
+
+A : No. I'm fairly sure that the adding of the custom rules to MCC that I do here is not supported by Microsoft.
 
 ## License
 
