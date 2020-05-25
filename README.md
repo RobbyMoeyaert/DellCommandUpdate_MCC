@@ -292,6 +292,12 @@ Q : The configuration bit for the DP is extensive, can you automate it?
 
 A : That's up next for me. Configuring LEDBAT is easy, but for the IIS stuff I'll have to dig into Microsoft's DOINC setup scripts, and *technically* you're not supposed to do that if you read the readme file in the DOINC setup folder.
 
+Q: What's that 64bit detection stuff at the top of your script?
+
+A: Command line execution when deploying from an SCCM package is sadly still run in 32bit mode. This can cause all kinds of problems due tot WOW64 abstraction. That bit of code detects that the script is running as a 32bit process on a 64bit system, and restarts itself by calling a 64bit Powershell with itself and any appropriate command line parameters. At the end it captures the exit code of the 64bit Powershell and passes it immediately as the exit code of the 32bit Powershell that SCCM started.
+
+The end result is that the script always runs in 64bit Powershell, and SCCM is none the wiser.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
