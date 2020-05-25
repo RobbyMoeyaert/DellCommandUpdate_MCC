@@ -44,14 +44,14 @@ It works by defining the CDNs as Server Farms in IIS on the DP, with associated 
 
 Since there is nothing proprietary about this, it is just using existing IIS functionality in a clever way, it is fairly trivial to extend upon.
 
-### Setup
+## Setup
 
-#### Microsoft Connected Cache configuration extension
+### 1) Microsoft Connected Cache configuration extension
 This section describes how to manually configure IIS and LEDBAT for this extension. All of this should be scriptable.
 
 To start, log into the MCC enabled distribution point with an account that has Administrator privileges on said server.
 
-##### IIS configuration
+#### 1.1) IIS configuration
 
 Open the IIS console and navigate to "Server Farms"
 
@@ -111,7 +111,7 @@ The net result is now that the URL
 
 "http://yoursccmdp.fqdn/DellDownloads" is a caching proxy for "http://downloads.dell.com".
 
-##### LEDBAT configuration
+#### 1.2) LEDBAT configuration
 LEDBAT is a throttling technology available from Windows Server 2016 and up. It can be configured by checking a checkbox in the properties of the SCCM distribution point in the SCCM console.
 
 The rules SCCM configures are aimed at connections coming in on port 80 and 443, which are the ports the DP will serve content on. This is good as it will be re-used in this configuration here, since port 80 is in use.
@@ -148,7 +148,7 @@ Verify again that the rule is added
 
 This concludes the LEDBAT part of the configuration
 
-#### Dell Command Update configuration script
+### 2) Dell Command Update configuration script
 
 This section uses the [ConfigureDCUcatalog.ps1](ConfigureDCUcatalog.ps1) script.
 
@@ -158,7 +158,7 @@ In addition, a secondary "PilotCatalogPC.zip" with similar content can be placed
 
 Thirdly, the script supports creating a folder with the model name and putting a CatalogPC.zip and PilotCatalogPC.zip file in it to target a specific catalog to a specific model.
 
-##### What the script does
+#### 2.1) What the script does
 
 When run on a machine, the script will
 
@@ -172,7 +172,7 @@ When run on a machine, the script will
 
 -Call the DCU CLI to configure DCU to use said XML file
 
-##### Obtaining CatalogPC.xml
+#### 2.2) Obtaining CatalogPC.xml
 
 The easiest way is to download the following file
 
@@ -184,15 +184,27 @@ Alternatively, use Dell Repository Manager to create one.
 
 https://www.dell.com/support/driver/en-us/DriversDetails?driverId=KWT9C
 
-##### Creating the CatalogPC.zip file
+#### 2.3) Creating the CatalogPC.zip file
 
 Not difficult, just make a ZIP file with the CatalogPC.xml file in the root.
 
 PilotCatalogPC.zip is the same thing, just a different name.
 
-##### Deploying the script
+#### 2.4) Deploying the script
 
 There are many ways you can deploy it, but the easiest is just creating an SCCM package with the script and ZIP files in it, with a program calling the script.
+
+![](images/SCCMPackage_1.PNG)
+
+![](images/SCCMPackage_2.PNG)
+
+![](images/SCCMPackage_3.PNG)
+
+### Verifying functionality
+
+To verify that the solution is working, check the Dell Command Update logs at
+
+C:\ProgramData\Dell
 
 ## License
 
