@@ -1,5 +1,5 @@
 # DellCommandUpdate_MCC
-Integrate Dell Command Update with Microsoft Connected Cache
+An unofficial method to integrate Dell Command Update with Microsoft Connected Cache
 ## Getting Started
 
 This guide will detail how to set up this particular integration between Dell Command Update and a Microsoft Connected Cache
