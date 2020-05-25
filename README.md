@@ -304,7 +304,7 @@ A : Because encryption is not needed and would cause issues. The function of enc
 
 Data confidentiality is not an issue here, we're dealing with public data.
 
-Data integrity is assured in a different way. In the case of DCU it's the hash of the file that is checked versus the hash in the catalog XML file, and you yourself provide said catalog XML file,i thus ensuring integrity. In the case of MCC it's handled by the signature of the files you download.
+Data integrity is assured in a different way. In the case of DCU it's the hash of the file that is checked versus the hash in the catalog XML file, and you yourself provide said catalog XML file, thus ensuring integrity. In the case of MCC it's handled by the digital signature of the files you download.
 
 Lastly, if we would have to use HTTPS we would run into the well known SSL interception issues, including providing trusted certificates.
 
