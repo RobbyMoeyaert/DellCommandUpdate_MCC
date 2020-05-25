@@ -36,7 +36,11 @@ On top of this, there is the issue with pointing clients towards the repository 
 
 My solution for this was to piggyback on a solution Microsoft had already provided for this exact problem, but aimed at Microsoft's own CDN downloads: Delivery Optimization In-Network Cache (DOINC), now rebranded as Microsoft Connected Cache (MCC).
 
-#### Background
+An added benefit of this solution is that it has change management and piloting capabilities built-in, which is also something DCU is lacking out of the box.
+
+The end result is that I don't have to do active repository management, don't waste space and bandwidth by distributing content to sites that don't need it, but still get the benefits of local caching and throttled downloads.
+
+#### Background : Microsoft Connected Cache internals
 
 To summarize briefly, the SCCM version of MCC uses IIS Application Request Routing to become a HTTP caching proxy for Microsoft's CDNs.
 
@@ -204,9 +208,73 @@ I would advise deploying the script on a repeating schedule, for example daily. 
 
 ## Verifying functionality
 
-To verify that the solution is working, check the Dell Command Update logs at
+To verify that the solution is working, you can check the following
 
-C:\ProgramData\Dell
+### ConfigureDCUcatalog.ps1 log
+
+By default you should be able to find it on the client at
+
+```
+%TEMP%\ConfigureDCUcatalog.log
+```
+
+You should be able to see that it finds the files and MCC server and uses them to write the file
+
+![](images/VERIFY_1.PNG)
+
+### DCUCatalog.xml file
+
+By default you should be able to find it on the client at
+
+```
+%PROGRAMDATA%\Dell\UpdateService\DCUCatalog.xml
+```
+
+![](images/VERIFY_2.PNG)
+
+If you open the file you should be able to see that the baseLocation has been modified
+
+![](images/VERIFY_3.PNG)
+
+### Dell Command Update Service log
+
+By default you should be able to find it on the client at
+
+```
+%PROGRAMDATA%\Dell\UpdateService\Log\Service.log
+```
+
+If you open the file you should be able to see that it uses the catalog XML file and knows of the new baseLocation
+
+![](images/VERIFY_4.PNG)
+
+When downloading an update, you should be able to see that it downloads from the MCC server
+
+![](images/VERIFY_5.PNG)
+
+### IIS logs
+
+By default you should be able to find it on the MCC enabled DP at
+
+```
+C:\inetpub\logs\LogFiles\W3SVC1
+```
+
+If you open the log file you should be able to see downloads under the "DellDownloads" URL
+
+![](images/VERIFY_6.PNG)
+
+### DOINC cache folder
+
+You will find this where you configured it in your Distribution Point settings. In my example this is the D: drive.
+
+When browsing the folder you should see a "downloads.dell.com" folder
+
+![](images/VERIFY_7.PNG)
+
+And within that you should find the content you have downloaded
+
+![](images/VERIFY_8.PNG)
 
 ## Q&A
 
@@ -218,6 +286,11 @@ A : This exact solution : no, but I am using officially supported functionality 
 Q : Is this supported by Microsoft?
 
 A : No. I'm fairly sure that the adding of the custom rules to MCC that I do here is not supported by Microsoft.
+
+
+Q : The configuration bit for the DP is extensive, can you automate it?
+
+A : That's up next for me. Configuring LEDBAT is easy, but for the IIS stuff I'll have to dig into Microsoft's DOINC setup scripts, and *technically* you're not supposed to do that if you read the readme file in the DOINC setup folder.
 
 ## License
 
