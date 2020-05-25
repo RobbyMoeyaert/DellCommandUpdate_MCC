@@ -59,13 +59,25 @@ Click "Create Server farm"
 
 Call it "Farm_downloads.dell.com" and add "downloads.dell.com" as server address.
 
+![](images/IIS_ServerFarm_1.PNG)
+
+![](images/IIS_ServerFarm_2.PNG)
+
 Click "NO" when asked to automatially create URL rewrite rules.
+
+![](images/IIS_ServerFarm_3.PNG)
 
 Select the newly created server farm and edit settings
 
+![](images/IIS_ServerFarm_4.PNG)
+
 -Under "Caching", change duration to 600 seconds
 
+![](images/IIS_ServerFarm_5.PNG)
+
 -Under "Proxy", change timeout to 300 seconds and response buffer treshold to 1024kb
+
+![](images/IIS_ServerFarm_6.PNG)
 
 Note: these are the same settings Microsoft configures on their own CDN server farms when setting up MCC
 
@@ -75,6 +87,8 @@ Open "URL Rewrite"
 
 Click "Add Rule", and select "Blank Rule"
 
+![](images/IIS_ARR_1.PNG)
+
 Configure the following:
 
 -Name : ARR_downloads.dell.com
@@ -83,15 +97,19 @@ Configure the following:
 
 -Conditions : {URL} matches pattern /DellDownloads/(.*)
 
+![](images/IIS_ARR_2.PNG)
+
 -Server Variables : HTTP_HOST downloads.dell.com, replace existing value
 
 -Action : Rewrite, http://Farm_downloads.dell.com/{C:1} , Stop processing subsequent rules
+
+![](images/IIS_ARR_3.PNG)
 
 This concludes the IIS part of the configuration.
 
 The net result is now that the URL
 
-"http://yoursccmdp.fqdn/DellDownloads" is a caching proxy for http://downloads.dell.com".
+"http://yoursccmdp.fqdn/DellDownloads" is a caching proxy for "http://downloads.dell.com".
 
 ##### LEDBAT configuration
 LEDBAT is a throttling technology available from Windows Server 2016 and up. It can be configured by checking a checkbox in the properties of the SCCM distribution point in the SCCM console.
@@ -108,6 +126,8 @@ Get-NetTransportFilter
 
 And verify you see the rules for port 80 and 443
 
+![](images/LEDBAT_1.PNG)
+
 Next, we will add a LEDBAT rule for connection to the CDN. However, which rule we need to add depends on the environment
 
 -If you are using a corporate proxy and have configured MCC to use it, you need to use the IP of the proxy since network-wise the TCP connection will be between the server and the proxy
@@ -120,13 +140,59 @@ Add the LEDBAT rule by entering the following on the Powershell prompt
 New-NetTransportFilter -SettingName InternetCustom -Protocol TCP -DestinationPrefix "152.199.20.130/32"
 ```
 
+![](images/LEDBAT_2.PNG)
+
 Verify again that the rule is added
+
+![](images/LEDBAT_3.PNG)
 
 This concludes the LEDBAT part of the configuration
 
 #### Dell Command Update configuration script
 
 This section uses the [ConfigureDCUcatalog.ps1](ConfigureDCUcatalog.ps1) script.
+
+The script expects to find in the same folder that it is located a file "CatalogPC.zip" containing a valid "CatalogPC.xml" file for Dell Command Update.
+
+In addition, a secondary "PilotCatalogPC.zip" with similar content can be placed in the same folder in order to allow piloting.
+
+Thirdly, the script supports creating a folder with the model name and putting a CatalogPC.zip and PilotCatalogPC.zip file in it to target a specific catalog to a specific model.
+
+##### What the script does
+
+When run on a machine, the script will
+
+-Look for the Dell Command Update CLI
+
+-Unpack the appropriate ZIP file containing the catalog for the machine, taking into account piloting and model specific catalogs
+
+-Check if a MCC server is configured and if so, modify the baseLocation attribute to point it towards the MCC server for downloads
+
+-Write the XML file to the local filesystem
+
+-Call the DCU CLI to configure DCU to use said XML file
+
+##### Obtaining CatalogPC.xml
+
+The easiest way is to download the following file
+
+https://downloads.dell.com/Catalog/CatalogPC.cab
+
+And extract it from within this file.
+
+Alternatively, use Dell Repository Manager to create one.
+
+https://www.dell.com/support/driver/en-us/DriversDetails?driverId=KWT9C
+
+##### Creating the CatalogPC.zip file
+
+Not difficult, just make a ZIP file with the CatalogPC.xml file in the root.
+
+PilotCatalogPC.zip is the same thing, just a different name.
+
+##### Deploying the script
+
+There are many ways you can deploy it, but the easiest is just creating an SCCM package with the script and ZIP files in it, with a program calling the script.
 
 ## License
 
