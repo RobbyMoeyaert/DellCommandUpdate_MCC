@@ -6,7 +6,7 @@ ConfigureDCUcatalog.ps1
 Author: Robby Moeyaert
 
 .DESCRIPTION 
-This script configures the Catalog.xml file for Dell Command Update. It expects to be run from the directory where the folders and ZIP files of the catalog files are placed.
+This script configures the Catalog.xml file for Dell Command Update. It expects to be run from the directory where the folders and ZIP or CAB files of the catalog files are placed.
 The script will modify the Catalog.xml file with the Microsoft Connected Cache server path to use as local repository.
 The expectation is that the MCC server has been modified to allow the downloads to work.
 
@@ -17,28 +17,28 @@ https://github.com/RobbyMoeyaert/DellCommandUpdate_MCC/blob/master/README.md
 
 param
 (
-   [String]$LogFile = "$env:TEMP\ConfigureDCUcatalog.log",
-   [switch]$Pilot,
-   [String]$CatalogTargetLocation = "$env:ProgramData\Dell\UpdateService"
+    [String]$LogFile = "$env:TEMP\ConfigureDCUcatalog.log",
+    [switch]$Pilot,
+    [String]$CatalogTargetLocation = "$env:ProgramData\Dell\UpdateService"
 )
 
 #Detect if we're running as a 32bit process on a 64bit system
 $ScriptPath = $MyInvocation.MyCommand.Definition
 
-if([Environment]::Is64BitOperatingSystem) {
-    if(!([Environment]::Is64BitProcess) ) {
+if ([Environment]::Is64BitOperatingSystem) {
+    if (!([Environment]::Is64BitProcess) ) {
         #64bit system but 32bit process!!! must restart in 64bit mode
         [String[]]$ar = "-NoProfile", "-NoLogo", "-File", "`"$ScriptPath`""
 
         #append named parameters as they are not included in $args
         $ar = $ar + "-Logfile $LogFile"
-        if($Pilot) {
+        if ($Pilot) {
             $ar = $ar + "-Pilot"
         }
         $ar = $ar + "-CatalogTargetLocation $CatalogTargetLocation"
 
         #append any arguments in $args
-        if($args -ne $null) {
+        if ($args -ne $null) {
             $ar = $ar + $args #append argument list if exists
         }
 
@@ -113,13 +113,15 @@ Write-Host "Looking for Dell Command Update"
 $DCUcliAPPX = "C:\Program Files\Dell\CommandUpdate\dcu-cli.exe" # APPX DCU location
 $DCUcliWin32 = "C:\Program Files (x86)\Dell\CommandUpdate\dcu-cli.exe" # Win32 DCU location
 
-if(Test-Path $DCUcliAPPX) {
+if (Test-Path $DCUcliAPPX) {
     Write-Host "Found DCU at `"$DCUcliAPPX`""
     $DCUcli = $DCUcliAPPX
-} elseif(Test-Path $DCUcliWin32) {
+}
+elseif (Test-Path $DCUcliWin32) {
     Write-Host "Found DCU at `"$DCUcliWin32`""
     $DCUcli = $DCUcliWin32
-} else {
+}
+else {
     Write-Host "Dell Command Update not found, exiting"
     Stop-Transcript
     Exit $ERR_DCUNotFound
@@ -127,49 +129,67 @@ if(Test-Path $DCUcliAPPX) {
 
 #Check if the machine is a pilot machine
 $isPilot = IsPilot
-if($Pilot) {
+if ($Pilot) {
     #Override if script parameter is set
     $isPilot = $true
 }
 
 
-$ModelName = (gwmi Win32_ComputerSystem).Model
+$ModelName = (Get-CimInstance Win32_ComputerSystem).Model
 Write-Host "Hardware model is `"$ModelName`""
 
 #Look for catalog
-Write-Host "Looking for DCU Catalog ZIP file"
-$zipFileName = "CatalogPC.zip"
-if($isPilot) {
-    $zipFileName = "PilotCatalogPC.zip"
+Write-Host "Looking for DCU Catalog ZIP or CAB file"
+$ArchiveFileName = "CatalogPC"
+if ($isPilot) {
+    $ArchiveFileName = "PilotCatalogPC"
 }
-$zipFileNameAndPath = $Script:CurDir + "\" + $ModelName + "\" + $zipFileName
+$ArchiveFileNameAndPath = $Script:CurDir + "\" + $ModelName + "\" + $ArchiveFileName
 
-if(Test-Path $zipFileNameAndPath) {
-    Write-Host "Found model specific Catalog ZIP file at `"$zipFileNameAndPath`""
-} else {
-    $zipFileNameAndPath = $Script:CurDir + "\" + $zipFileName
-    if(Test-Path $zipFileNameAndPath) {
-        Write-Host "Found DCU Catalog at `"$zipFileNameAndPath`""
-    } else {
-        Write-Host "ERROR : cannot find DCU Catalog file ZIP file"
+if (Test-Path -Path "$ArchiveFileNameAndPath.zip") {
+    $ArchiveFileNameAndPath = "$ArchiveFileNameAndPath.zip"
+    Write-Host "Found model specific Catalog ZIP file at `"$ArchiveFileNameAndPath`""
+}
+elseif (Test-Path -Path "$ArchiveFileNameAndPath.cab") {
+    $ArchiveFileNameAndPath = "$ArchiveFileNameAndPath.cab"
+    Write-Host "Found model specific Catalog CAB file at `"$ArchiveFileNameAndPath`""
+}
+else {
+    $ArchiveFileNameAndPath = $Script:CurDir + "\" + $ArchiveFileName
+    if (Test-Path -Path "$ArchiveFileNameAndPath.zip") {
+        $ArchiveFileNameAndPath = "$ArchiveFileNameAndPath.zip"
+        Write-Host "Found DCU Catalog at `"$ArchiveFileNameAndPath`""
+    }
+    elseif (Test-Path -Path "$ArchiveFileNameAndPath.cab") {
+        $ArchiveFileNameAndPath = "$ArchiveFileNameAndPath.cab"
+        Write-Host "Found DCU Catalog at `"$ArchiveFileNameAndPath`""
+    }
+    else {
+        Write-Host "ERROR : cannot find DCU Catalog file ZIP or CAB file"
         Stop-Transcript
         Exit $ERR_CatalogNotFound
     }
 }
 
 #Remove any leftovers from previous attempts
-if(Test-Path "$env:TEMP\DCU") {
+if (Test-Path "$env:TEMP\DCU") {
     Remove-Item -Path "$env:TEMP\DCU" -Recurse -Force
 }
 
-#Unzip into temp
-Expand-Archive -Path $zipFileNameAndPath -DestinationPath "$env:TEMP\DCU"
+#Extract archive into temp
+if ($ArchiveFileNameAndPath -match '.zip') {
+    Expand-Archive -Path $ArchiveFileNameAndPath -DestinationPath "$env:TEMP\DCU"
+}
+elseif ($ArchiveFileNameAndPath -match '.cab') {
+    Start-Process -NoNewWindow -Wait -FilePath "$env:SystemRoot\System32\extrac32.exe" -ArgumentList '/Y',"$ArchiveFileNameAndPath","/L `"$env:TEMP\DCU`""
+}
 
-if(Test-Path "$env:TEMP\DCU\CatalogPC.xml") {
+if (Test-Path "$env:TEMP\DCU\CatalogPC.xml") {
     Write-Host "Catalog XML file extracted succesfully"
     $xmlFileName = "$env:TEMP\DCU\CatalogPC.xml"
-} else {
-    Write-Host "ERROR : Catalog XML file not found after ZIP extract"
+}
+else {
+    Write-Host "ERROR : Catalog XML file not found after archive extract"
     Remove-Item -Path "$env:TEMP\DCU" -Recurse -Force
     Stop-Transcript
     Exit $ERR_CatalogNotFound
@@ -182,20 +202,22 @@ $isMCCConfigured = $false
 $MCCserver = ""
 #GPO
 $MCCservers = Get-ItemPropertyValue -Path HKLM:\SOFTWARE\Policies\Microsoft\Windows\DeliveryOptimization -Name DOCacheHost
-if($MCCservers -eq $null) {
+if ($null -eq $MCCservers) {
     #CSP
     $MCCservers = Get-ItemPropertyValue -Path HKLM:\SOFTWARE\Microsoft\PolicyManager\current\device\DeliveryOptimization -Name DOCacheHost
 }
-if($MCCservers -eq $null) {
+if ($null -eq $MCCservers) {
     Write-Host "Could not find MCC server configuration"
     $isMCCConfigured = $false
-} else {
+}
+else {
     Write-Host "Found MCC server configuration : `"$MCCservers`""
-    if($MCCservers.Equals("")) {
+    if ($MCCservers.Equals("")) {
         Write-Host "Blank value configured, no MCC server is within the boundary of this machine"
         $isMCCConfigured = $false
-    } else {
-        if($MCCservers.Contains(",")) {
+    }
+    else {
+        if ($MCCservers.Contains(",")) {
             Write-Host "Multiple MCC servers configured"
             $MCCserverArray = $MCCservers.Split(",")
             #pick a random MCC server from the list
@@ -203,7 +225,8 @@ if($MCCservers -eq $null) {
             $MCCserver = $MCCserverArray[$rand]
             Write-Host "Setting MCC server to `"$MCCserver`""
             $isMCCConfigured = $true
-        } else {
+        }
+        else {
             Write-Host "Single MCC server configured"
             $MCCserver = $MCCservers
             Write-Host "Setting MCC server to `"$MCCserver`""
@@ -217,7 +240,7 @@ Write-Host "Reading catalog XML file `"$xmlFileName`""
 
 [xml]$xmlDoc = Get-Content $xmlFileName
 
-if($isMCCConfigured) {
+if ($isMCCConfigured) {
     #modify the baseLocation to use the MCC server
     Write-Host "Modifying baseLocation to `"http://$MCCserver/DellDownloads`""
     $xmlDoc.Manifest.baseLocation = "http://$MCCserver/DellDownloads"
@@ -232,10 +255,10 @@ if($isMCCConfigured) {
 $TargetFileName = "$CatalogTargetLocation\DCUCatalog.xml"
 
 #remove existing file
-if(Test-Path $TargetFileName) {
+if (Test-Path $TargetFileName) {
     Write-Host "Deleting existing DCUCatalog.xml file"
     Remove-Item $TargetFileName
-    if($?) {
+    if ($?) {
         Write-Host "Delete succesful"
     }
 }
@@ -243,30 +266,40 @@ if(Test-Path $TargetFileName) {
 #write new file
 Write-Host "Writing Catalog.xml file : `"$TargetFileName`""
 $xmlDoc.Save($TargetFileName)
-if($?) {
+if ($?) {
     Write-Host "Write succesful"
 }
 
 #clean up
 Remove-Item -Path "$env:TEMP\DCU" -Recurse -Force
 
+# Set policy to allow XML catalog
+$DcuSettingsPolicyKey = 'HKLM:\SOFTWARE\Policies\Dell\UpdateService\Clients\CommandUpdate\Preferences\Settings'
+if (-not (Test-Path -Path "$DcuSettingsPolicyKey\General")) {
+    New-Item -Path $DcuSettingsPolicyKey -Name 'General' -Force > $null
+}
+New-ItemProperty -Path "$DcuSettingsPolicyKey\General" -Name 'EnableCatalogXML'  -PropertyType 'DWord' -Value 1 -Force > $null
+Write-Host "Enabled 'EnableCatalogXML' Dell Command | Update policy"
+
 #check if DCU was already configured to use this Catalog XML file
 Write-Host "Checking if DCU is already configured to use the Catalog.xml file"
 $configureDCUcatalog = $false
-$DCUcatalogReg = Get-ItemPropertyValue -Path "HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings\General" -Name "CatalogsPath"
-if($DCUcatalogReg -eq $null) {
+$DCUcatalogReg = (Get-ItemProperty -Path "HKLM:\SOFTWARE\DELL\UpdateService\Clients\CommandUpdate\Preferences\Settings\General").CustomCatalogPaths
+if ($null -eq $DCUcatalogReg) {
     Write-Host "DCU does not have a custom catalog file configured, need to configure it"
     $configureDCUcatalog = $true
-} else {
-    if($DCUcatalogReg.toLower().Contains(($TargetFileName).toLower())) {
+}
+else {
+    if ($DCUcatalogReg.toLower().Contains(($TargetFileName).toLower())) {
         Write-Host "DCU is already configured to use the DCUCatalog.xml file, no need to change"
-    } else {
+    }
+    else {
         Write-Host "DCU does not have this specific DCUCatalog.xml file configured, need to configure it"
         $configureDCUcatalog = $true
     }
 }
 
-if($configureDCUcatalog) {
+if ($configureDCUcatalog) {
     Write-Host "Configuring DCU to use the Catalog.xml file"
     [String[]]$DCUar = "/configure", "-catalogLocation=`"$TargetFileName`""
     $DCUproc = Start-Process $DCUcli $DCUar -Wait -NoNewWindow -PassThru

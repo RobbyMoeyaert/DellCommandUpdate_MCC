@@ -75,7 +75,7 @@ Select the newly created server farm and edit settings
 
 ![](images/IIS_ServerFarm_4.PNG)
 
--Under "Caching", change duration to 600 seconds
+-Under "Caching", change duration to 600 seconds, select "Enable request consolidation"
 
 ![](images/IIS_ServerFarm_5.PNG)
 
@@ -156,11 +156,13 @@ This concludes the LEDBAT part of the configuration
 
 This section uses the [ConfigureDCUcatalog.ps1](ConfigureDCUcatalog.ps1) script.
 
-The script expects to find in the same folder that it is located a file "CatalogPC.zip" containing a valid "CatalogPC.xml" file for Dell Command Update.
+Run without parameters, the script expects to find in the same folder that it is located a file "CatalogPC.zip" or "CatalogPC.cab" containing a valid "CatalogPC.xml" file for Dell Command Update.
 
-In addition, a secondary "PilotCatalogPC.zip" with similar content can be placed in the same folder in order to allow piloting.
+In addition, a secondary "PilotCatalogPC.zip" or "PilotCatalogPC.cab" with similar content can be placed in the same folder in order to allow piloting.
 
-Thirdly, the script supports creating a folder with the model name and putting a CatalogPC.zip and PilotCatalogPC.zip file in it to target a specific catalog to a specific model.
+Thirdly, the script supports creating a folder with the model name and putting a CatalogPC.zip (or .cab) and PilotCatalogPC.zip (or .cab) file in it to target a specific catalog to a specific model.
+
+You may also specify the '-DownloadCatalog' parameter to have the script download CatalogPC.cab from your MCC server (or directly from Dell if there is no MCC in boundary)
 
 #### 2.1) What the script does
 
@@ -168,11 +170,17 @@ When run on a machine, the script will
 
 -Look for the Dell Command Update CLI
 
--Unpack the appropriate ZIP file containing the catalog for the machine, taking into account piloting and model specific catalogs
+-Optionally download CatalogPC.cab from MCC server or Dell's CDN
+
+-Unpack the appropriate ZIP or CAB file containing the catalog for the machine, taking into account piloting and model specific catalogs
 
 -Check if a MCC server is configured and if so, modify the baseLocation attribute to point it towards the MCC server for downloads
 
 -Write the XML file to the local filesystem
+
+-Add "EnableCatalogXML" policy item to the registry
+
+https://www.dell.com/support/manuals/en-us/command-update/admx_rg/configure-policy-settings
 
 -Call the DCU CLI to configure DCU to use said XML file
 
@@ -188,11 +196,11 @@ Alternatively, use Dell Repository Manager to create one.
 
 https://www.dell.com/support/driver/en-us/DriversDetails?driverId=KWT9C
 
-#### 2.3) Creating the CatalogPC.zip file
+#### 2.3) Creating the CatalogPC.zip or CatalogPC.cab file
 
-Not difficult, just make a ZIP file with the CatalogPC.xml file in the root.
+Not difficult, just make a ZIP file with the CatalogPC.xml file in the root. Alternatively, just use the downloaded CatalogPC.cab file.
 
-PilotCatalogPC.zip is the same thing, just a different name.
+PilotCatalogPC.zip is the same thing, just a different name. Also works with cab file if you prefer.
 
 #### 2.4) Deploying the script
 
